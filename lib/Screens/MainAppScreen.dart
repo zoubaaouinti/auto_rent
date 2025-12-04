@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'ProfileScreen.dart';
 import 'CircularBottomNavigation.dart';
 import 'Tab_item.dart';
+import 'RentalHistoryScreen.dart';
 
 class MainAppScreen extends StatefulWidget {
   const MainAppScreen({super.key});
@@ -19,17 +20,17 @@ class _MainAppScreenState extends State<MainAppScreen> {
   final List<TabItem> tabItems = [
     TabItem(Icons.home, "Home", Colors.blue),
     TabItem(Icons.search, "Search", Colors.orange),
-    TabItem(Icons.layers, "Reports", Colors.red),
+    TabItem(Icons.layers, "Historique", Colors.red),
     TabItem(Icons.notifications, "Notifications", Colors.cyan),
     TabItem(Icons.person, "Profile", Colors.purple),
   ];
 
   final List<Widget> pages = [
-    Center(child: Text("🏠 Home", style: TextStyle(fontSize: 20))),
-    Center(child: Text("🔍 Search", style: TextStyle(fontSize: 20))),
-    Center(child: Text("📊 Reports", style: TextStyle(fontSize: 20))),
-    Center(child: Text("🔔 Notifications", style: TextStyle(fontSize: 20))),
-    ProfileScreen(),
+    const Center(child: Text("🏠 Accueil", style: TextStyle(fontSize: 20))),
+    const Center(child: Text("🔍 Recherche", style: TextStyle(fontSize: 20))),
+    RentalHistoryScreen(),
+    const Center(child: Text("🔔 Notifications", style: TextStyle(fontSize: 20))),
+    const ProfileScreen(),
   ];
 
   @override
