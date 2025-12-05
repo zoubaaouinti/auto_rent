@@ -20,31 +20,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     Navigator.pushReplacementNamed(context, '/login');
   }
 
-  void _deleteAccount(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Confirm Deletion"),
-        content: const Text("Are you sure you want to delete your account? This action is irreversible."),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text("Cancel"),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Account deleted")),
-              );
-              Navigator.pushReplacementNamed(context, '/login');
-            },
-            child: const Text("Delete", style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-  }
 
   void _launchHelpUrl() async {
     final Uri url = Uri.parse('https://avempace-wireless.com/index.php/contacts/');
@@ -75,7 +50,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       'notifications': Icons.notifications_outlined,
       'dark_mode': Icons.dark_mode_outlined,
       'help': Icons.help_outline,
-      'delete': Icons.delete_outline,
     };
 
     return InkWell(
@@ -310,12 +284,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 onTap: () => _showChangePasswordSheet(context),
               ),
 
-              _buildSettingItem(
-                context,
-                'delete', // Icône de suppression
-                "Delete Account",
-                onTap: () => _deleteAccount(context),
-              ),
 
               const SizedBox(height: 40),
 

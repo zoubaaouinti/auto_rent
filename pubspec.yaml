@@ -45,7 +45,7 @@ dependencies:
   shared_preferences: ^2.5.3
   flutter_launcher_icons: ^0.13.1
   cupertino_icons: ^1.0.8
-
+  table_calendar: ^3.0.9
 dev_dependencies:
   flutter_test:
     sdk: flutter

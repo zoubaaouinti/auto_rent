@@ -3,6 +3,7 @@ import 'ProfileScreen.dart';
 import 'CircularBottomNavigation.dart';
 import 'Tab_item.dart';
 import 'RentalHistoryScreen.dart';
+import 'HomeScreen.dart';
 
 class MainAppScreen extends StatefulWidget {
   const MainAppScreen({super.key});
@@ -12,7 +13,7 @@ class MainAppScreen extends StatefulWidget {
 }
 
 class _MainAppScreenState extends State<MainAppScreen> {
-  int selectedPos = 2;
+  int selectedPos = 0;
   late CircularBottomNavigationController _navigationController;
 
   final double bottomNavBarHeight = 60;
@@ -26,9 +27,9 @@ class _MainAppScreenState extends State<MainAppScreen> {
   ];
 
   final List<Widget> pages = [
-    const Center(child: Text("🏠 Accueil", style: TextStyle(fontSize: 20))),
+    const HomeScreen(),
     const Center(child: Text("🔍 Recherche", style: TextStyle(fontSize: 20))),
-    RentalHistoryScreen(),
+     RentalHistoryScreen(),
     const Center(child: Text("🔔 Notifications", style: TextStyle(fontSize: 20))),
     const ProfileScreen(),
   ];
