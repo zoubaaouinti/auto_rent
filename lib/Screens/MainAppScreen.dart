@@ -4,6 +4,7 @@ import 'CircularBottomNavigation.dart';
 import 'Tab_item.dart';
 import 'RentalHistoryScreen.dart';
 import 'HomeScreen.dart';
+import 'MapScreen.dart';
 
 class MainAppScreen extends StatefulWidget {
   const MainAppScreen({super.key});
@@ -19,18 +20,18 @@ class _MainAppScreenState extends State<MainAppScreen> {
   final double bottomNavBarHeight = 60;
 
   final List<TabItem> tabItems = [
-    TabItem(Icons.home, "Home", Colors.blue),
-    TabItem(Icons.search, "Search", Colors.orange),
-    TabItem(Icons.layers, "Historique", Colors.red),
-    TabItem(Icons.notifications, "Notifications", Colors.cyan),
-    TabItem(Icons.person, "Profile", Colors.purple),
+    TabItem(Icons.explore, "Explorer", Colors.blue),
+    TabItem(Icons.calendar_today, "Mes résas", Colors.orange),
+    TabItem(Icons.map, "Carte", Colors.red),
+    TabItem(Icons.support_agent, "Assistance", Colors.cyan),
+    TabItem(Icons.person, "Profil", Colors.purple),
   ];
 
   final List<Widget> pages = [
     const HomeScreen(),
-    const Center(child: Text("🔍 Recherche", style: TextStyle(fontSize: 20))),
-     RentalHistoryScreen(),
-    const Center(child: Text("🔔 Notifications", style: TextStyle(fontSize: 20))),
+    RentalHistoryScreen(),
+    const MapScreen(),
+    const Center(child: Text("🛟 Assistance", style: TextStyle(fontSize: 20))),
     const ProfileScreen(),
   ];
 
@@ -49,29 +50,18 @@ class _MainAppScreenState extends State<MainAppScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          Padding(
-            padding: EdgeInsets.only(bottom: bottomNavBarHeight),
-            child: pages[selectedPos],
-          ),
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: CircularBottomNavigation(
-              tabItems,
-              controller: _navigationController,
-              selectedPos: selectedPos,
-              barHeight: bottomNavBarHeight,
-              backgroundBoxShadow: [BoxShadow(color: Colors.black26, blurRadius: 8)],
-              animationDuration: Duration(milliseconds: 300),
-              selectedCallback: (int? pos) {
-                setState(() {
-                  selectedPos = pos ?? 0;
-                });
-              },
-            ),
-          )
-        ],
+      body: pages[selectedPos],
+      bottomNavigationBar: CircularBottomNavigation(
+        tabItems,
+        controller: _navigationController,
+        barHeight: bottomNavBarHeight,
+        barBackgroundColor: Colors.white,
+        animationDuration: const Duration(milliseconds: 300),
+        selectedCallback: (int? selectedPos) {
+          setState(() {
+            this.selectedPos = selectedPos!;
+          });
+        },
       ),
     );
   }

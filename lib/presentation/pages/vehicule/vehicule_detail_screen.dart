@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
-import '../models/car_model.dart';
+import '../../../domain/entities/vehicule.dart';
 
 class VehiculeDetailScreen extends StatefulWidget {
   final Vehicule vehicule;
@@ -34,7 +34,7 @@ class _VehiculeDetailScreenState extends State<VehiculeDetailScreen> {
 
   void _startAutoPlay() {
     if (widget.vehicule.photos.length <= 1) return;
-    
+
     Future.delayed(const Duration(seconds: 3), () {
       if (_pageController.hasClients) {
         if (_currentPage < widget.vehicule.photos.length - 1) {
@@ -64,7 +64,7 @@ class _VehiculeDetailScreenState extends State<VehiculeDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Carrousel d'images avec indicateurs
+            // Carousel with dots
             Stack(
               alignment: Alignment.bottomCenter,
               children: [
@@ -124,8 +124,8 @@ class _VehiculeDetailScreenState extends State<VehiculeDetailScreen> {
                           margin: const EdgeInsets.symmetric(horizontal: 4.0),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(4),
-                            color: _currentPage == index 
-                                ? Colors.white 
+                            color: _currentPage == index
+                                ? Colors.white
                                 : Colors.white.withOpacity(0.5),
                           ),
                         ),
@@ -140,58 +140,35 @@ class _VehiculeDetailScreenState extends State<VehiculeDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // En-tête avec marque, modèle et année
                   Text(
                     '${widget.vehicule.marque} ${widget.vehicule.modele}',
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     'Année: ${widget.vehicule.annee} | ${widget.vehicule.immatriculation}',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey,
-                    ),
+                    style: const TextStyle(fontSize: 16, color: Colors.grey),
                   ),
                   const SizedBox(height: 16),
-                  
-                  // Prix et caution
+
                   Row(
                     children: [
                       Text(
                         '${widget.vehicule.prixJour.toInt()} DH / jour',
-                        style: const TextStyle(
-                          fontSize: 20,
-                          color: Colors.green,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: const TextStyle(fontSize: 20, color: Colors.green, fontWeight: FontWeight.bold),
                       ),
                       const Spacer(),
                       Text(
                         'Caution: ${widget.vehicule.caution.toInt()} DH',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          color: Colors.orange,
-                        ),
+                        style: const TextStyle(fontSize: 16, color: Colors.orange),
                       ),
                     ],
                   ),
                   const Divider(height: 32),
-                  
-                  // Caractéristiques principales
-                  const Text(
-                    'Caractéristiques principales',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+
+                  const Text('Caractéristiques principales', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 12),
-                  
-                  // Grille d'informations
+
                   GridView.count(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -207,53 +184,32 @@ class _VehiculeDetailScreenState extends State<VehiculeDetailScreen> {
                       _buildFeatureItem(Icons.gps_fixed, 'GPS', _formatEnum(widget.vehicule.gpsTracker.toString())),
                     ],
                   ),
-                  
+
                   const SizedBox(height: 24),
-                  
-                  // Options incluses
+
                   if (widget.vehicule.optionsIncluses.isNotEmpty) ...[
-                    const Text(
-                      'Options incluses',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    const Text('Options incluses', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 12),
                     ...widget.vehicule.optionsIncluses
-                        .where((option) => option.inclus)
-                        .map((option) => ListTile(
+                        .where((o) => o.inclus)
+                        .map((o) => ListTile(
                               leading: const Icon(Icons.check_circle, color: Colors.green, size: 24),
-                              title: Text(
-                                option.nom,
-                                style: const TextStyle(fontWeight: FontWeight.w500),
-                              ),
-                              subtitle: option.description.isNotEmpty 
-                                  ? Text(option.description)
-                                  : null,
+                              title: Text(o.nom, style: const TextStyle(fontWeight: FontWeight.w500)),
+                              subtitle: o.description.isNotEmpty ? Text(o.description) : null,
                               dense: true,
                               visualDensity: const VisualDensity(vertical: -3),
                             ))
                         .toList(),
                     const SizedBox(height: 16),
                   ],
-                  
+
                   const Divider(height: 32),
-                  
-                  // Calendrier de disponibilité
-                  const Text(
-                    'Disponibilité',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+
+                  const Text('Disponibilité', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 12),
                   Card(
                     elevation: 2,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     margin: const EdgeInsets.symmetric(horizontal: 16),
                     child: Padding(
                       padding: const EdgeInsets.all(12.0),
@@ -266,36 +222,24 @@ class _VehiculeDetailScreenState extends State<VehiculeDetailScreen> {
                         headerStyle: HeaderStyle(
                           formatButtonVisible: false,
                           titleCentered: true,
-                          titleTextStyle: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          titleTextStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                           leftChevronIcon: const Icon(Icons.chevron_left, size: 24),
                           rightChevronIcon: const Icon(Icons.chevron_right, size: 24),
                         ),
                         calendarStyle: CalendarStyle(
-                          todayDecoration: BoxDecoration(
-                            color: Colors.blue.shade100,
-                            shape: BoxShape.circle,
-                          ),
+                          todayDecoration: BoxDecoration(color: Colors.blue.shade100, shape: BoxShape.circle),
                           defaultTextStyle: const TextStyle(color: Colors.green),
                           weekendTextStyle: const TextStyle(color: Colors.red),
                           outsideDaysVisible: false,
                         ),
                         daysOfWeekStyle: const DaysOfWeekStyle(
                           weekdayStyle: TextStyle(fontWeight: FontWeight.bold),
-                          weekendStyle: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.red,
-                          ),
+                          weekendStyle: TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
                         ),
                         calendarBuilders: CalendarBuilders(
-                          defaultBuilder: (context, day, focusedDay) {
-                            bool isAvailable = !_nonAvailableDates.any((date) => 
-                              date.year == day.year && 
-                              date.month == day.month && 
-                              date.day == day.day
-                            ) && !day.isBefore(DateTime.now().subtract(const Duration(days: 1)));
+                          defaultBuilder: (context, day, _) {
+                            bool isAvailable = !_nonAvailableDates.any((d) => d.year == day.year && d.month == day.month && d.day == day.day) &&
+                                !day.isBefore(DateTime.now().subtract(const Duration(days: 1)));
 
                             return Center(
                               child: Container(
@@ -304,19 +248,14 @@ class _VehiculeDetailScreenState extends State<VehiculeDetailScreen> {
                                 decoration: BoxDecoration(
                                   color: isAvailable ? Colors.green.shade50 : Colors.red.shade50,
                                   shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: isAvailable ? Colors.green : Colors.red,
-                                    width: 1.5,
-                                  ),
+                                  border: Border.all(color: isAvailable ? Colors.green : Colors.red, width: 1.5),
                                 ),
                                 child: Center(
                                   child: Text(
                                     day.day.toString(),
                                     style: TextStyle(
                                       color: isAvailable ? Colors.green : Colors.red,
-                                      fontWeight: isSameDay(day, DateTime.now()) 
-                                          ? FontWeight.bold 
-                                          : FontWeight.normal,
+                                      fontWeight: isSameDay(day, DateTime.now()) ? FontWeight.bold : FontWeight.normal,
                                     ),
                                   ),
                                 ),
@@ -327,34 +266,21 @@ class _VehiculeDetailScreenState extends State<VehiculeDetailScreen> {
                       ),
                     ),
                   ),
-                  
+
                   const SizedBox(height: 24),
-                  
-                  // Bouton Réserver
+
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
                     child: SizedBox(
                       width: double.infinity,
                       height: 50,
                       child: ElevatedButton(
-                        onPressed: () {
-                          // Action de réservation
-                          // TODO: Implémenter la logique de réservation
-                        },
+                        onPressed: () {},
                         style: ElevatedButton.styleFrom(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           backgroundColor: Theme.of(context).primaryColor,
                         ),
-                        child: const Text(
-                          'Réserver',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
+                        child: const Text('Réserver maintenant', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                       ),
                     ),
                   ),
@@ -384,21 +310,10 @@ class _VehiculeDetailScreenState extends State<VehiculeDetailScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey,
-                ),
-              ),
               const SizedBox(height: 2),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
+              Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              const SizedBox(height: 2),
+              Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
             ],
           ),
         ],
@@ -407,7 +322,6 @@ class _VehiculeDetailScreenState extends State<VehiculeDetailScreen> {
   }
 
   String _formatEnum(String enumValue) {
-    return enumValue.split('.').last[0].toUpperCase() + 
-           enumValue.split('.').last.substring(1).toLowerCase();
+    return enumValue.split('.').last[0].toUpperCase() + enumValue.split('.').last.substring(1).toLowerCase();
   }
 }

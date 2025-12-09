@@ -29,6 +29,13 @@
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
 	<key>UISupportedInterfaceOrientations</key>
+
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Cette application a besoin d'accéder à votre position pour afficher les véhicules à proximité.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Cette application a besoin d'accéder à votre position pour afficher les véhicules à proximité.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Cette application a besoin d'accéder à votre position pour afficher les véhicules à proximité.</string>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
