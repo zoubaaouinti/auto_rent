@@ -12,6 +12,10 @@ class RentalHistory {
   final DateTime endDate;
   final double totalPrice;
   final String status; // 'completed', 'upcoming', 'cancelled'
+  final bool withDriver;
+  int? carRating;
+  int? driverRating;
+  String? reviewComment;
 
   RentalHistory({
     required this.id,
@@ -22,6 +26,11 @@ class RentalHistory {
     required this.endDate,
     required this.totalPrice,
     this.status = 'completed',
+    this.withDriver = false,
+    this.carRating,
+    this.driverRating,
+    this.reviewComment,
+    
   });
 
   // Méthode pour générer des données de démo
@@ -36,6 +45,7 @@ class RentalHistory {
         endDate: DateTime.now().subtract(const Duration(days: 25)),
         totalPrice: 450.0,
         status: 'completed',
+        withDriver: true,
       ),
       RentalHistory(
         id: '2',
@@ -56,6 +66,7 @@ class RentalHistory {
         endDate: DateTime.now().subtract(const Duration(days: 10)),
         totalPrice: 350.0,
         status: 'completed',
+        withDriver: true,
       ),
     ];
   }
@@ -69,40 +80,43 @@ class RentalHistory {
   int get durationInDays => endDate.difference(startDate).inDays;
 }
 
-class RentalHistoryScreen extends StatelessWidget {
-  RentalHistoryScreen({Key? key}) : super(key: key);
+class RentalHistoryScreen extends StatefulWidget {
+  const RentalHistoryScreen({Key? key}) : super(key: key);
 
-  final List<RentalHistory> rentals = RentalHistory.getDummyData();
+  @override
+  _RentalHistoryScreenState createState() => _RentalHistoryScreenState();
+}
 
-  void _navigateToDetail(BuildContext context, RentalHistory rental) {
-    final details = RentalDetails(
-      marque: rental.carModel.split(' ')[0],
-      modele: rental.carModel.split(' ').sublist(1).join(' '),
-      annee: '2023',
-      immatriculation: 'AB-123-CD',
-      places: 5,
-      transmission: 'Automatique',
-      carburant: 'Diesel',
-      prixTotal: rental.totalPrice,
-      dateDebut: rental.startDate,
-      dateFin: rental.endDate,
-      duree: rental.durationInDays,
-      lieuPrise: 'Aéroport de Paris-Charles de Gaulle',
-      lieuRestitution: 'Aéroport de Paris-Charles de Gaulle',
-      nomChauffeur: 'Jean Dupont',
-      caution: 500.0,
-      optionsIncluses: ['GPS', 'Bluetooth', 'Climatisation', 'Sièges chauffants'],
-      images: [
-        rental.carImage,
-        'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=500&auto=format',
-        'https://images.unsplash.com/photo-1494905998402-395d579af36f?w=500&auto=format',
-      ],
-    );
+class _RentalHistoryScreenState extends State<RentalHistoryScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  final List<RentalHistory> _rentals = RentalHistory.getDummyData();
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => RentalDetailScreen(rentalDetails: details),
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  void _showRatingDialog(RentalHistory rental) {
+    showDialog(
+      context: context,
+      builder: (context) => _RatingDialog(
+        rental: rental,
+        onRatingSubmitted: (updatedRental) {
+          setState(() {
+            final index = _rentals.indexWhere((r) => r.id == updatedRental.id);
+            if (index != -1) {
+              _rentals[index] = updatedRental;
+            }
+          });
+        },
       ),
     );
   }
@@ -111,186 +125,229 @@ class RentalHistoryScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Historique des locations'),
-        centerTitle: true,
-        elevation: 0,
+        title: const Text('Mes Locations'),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: 'À venir'),
+            Tab(text: 'Terminées'),
+            Tab(text: 'Annulées'),
+          ],
+        ),
       ),
-      body: rentals.isEmpty
-          ? _buildEmptyState()
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: rentals.length,
-              itemBuilder: (context, index) {
-                return GestureDetector(
-                  onTap: () => _navigateToDetail(context, rentals[index]),
-                  child: _buildRentalCard(rentals[index]),
-                );
-              },
-            ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildRentalList(_rentals.where((r) => r.status == 'upcoming').toList()),
+          _buildRentalList(_rentals.where((r) => r.status == 'completed').toList()),
+          _buildRentalList(_rentals.where((r) => r.status == 'cancelled').toList()),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRentalList(List<RentalHistory> rentals) {
+    if (rentals.isEmpty) {
+      return const Center(
+        child: Text('Aucune location trouvée'),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: rentals.length,
+      itemBuilder: (context, index) {
+        final rental = rentals[index];
+        return _buildRentalCard(rental);
+      },
     );
   }
 
   Widget _buildRentalCard(RentalHistory rental) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      elevation: 3,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Image de la voiture
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-            child: Image.network(
-              rental.carImage,
-              height: 150,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(
-                height: 150,
-                color: Colors.grey[200],
-                child: const Icon(Icons.car_rental, size: 50, color: Colors.grey),
-              ),
-            ),
+  return Card(
+    margin: const EdgeInsets.only(bottom: 16),
+    child: InkWell(
+      onTap: () {
+        final details = RentalDetails(
+          marque: rental.carModel.split(' ')[0],
+          modele: rental.carModel.split(' ').sublist(1).join(' '),
+          annee: '2023',
+          immatriculation: 'AB-123-CD',
+          places: 5,
+          transmission: 'Automatique',
+          carburant: 'Diesel',
+          prixTotal: rental.totalPrice,
+          dateDebut: rental.startDate,
+          dateFin: rental.endDate,
+          duree: rental.durationInDays,
+          lieuPrise: 'Aéroport de Paris-Charles de Gaulle',
+          lieuRestitution: 'Aéroport de Paris-Charles de Gaulle',
+          nomChauffeur: 'Jean Dupont',
+          caution: 500.0,
+          optionsIncluses: ['GPS', 'Bluetooth', 'Climatisation', 'Sièges chauffants'],
+          images: [
+            rental.carImage,
+            'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=500&auto=format',
+            'https://images.unsplash.com/photo-1494905998402-395d579af36f?w=500&auto=format',
+          ],
+        );
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => RentalDetailScreen(rentalDetails: details),
           ),
-          
+        ).then((_) {
+          setState(() {});
+        });
+      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // En-tête avec image et statut
+          Stack(
+            children: [
+              ClipRRect(
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(4),
+                  topRight: Radius.circular(4),
+                ),
+                child: rental.carImage.startsWith('http')
+                    ? Image.network(
+                        rental.carImage,
+                        height: 120,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => _buildPlaceholderImage(),
+                      )
+                    : Image.asset(
+                        rental.carImage,
+                        height: 120,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => _buildPlaceholderImage(),
+                      ),
+              ),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _getStatusColor(rental.status).withOpacity(0.9),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    _getStatusText(rental.status),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
           // Détails de la location
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Modèle et type de voiture
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      rental.carModel,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _getStatusColor(rental.status).withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        _getStatusText(rental.status),
-                        style: TextStyle(
-                          color: _getStatusColor(rental.status),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
                 Text(
-                  rental.carType,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
+                  '${rental.carModel} • ${rental.carType}',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                
-                const SizedBox(height: 16),
-                
-                // Dates de location
-                _buildInfoRow(
-                  Icons.calendar_today,
-                  '${rental.getFormattedDate(rental.startDate)} - ${rental.getFormattedDate(rental.endDate)}',
-                ),
                 const SizedBox(height: 8),
-                
-                // Durée
-                _buildInfoRow(
-                  Icons.access_time,
-                  '${rental.durationInDays} jours de location',
+                _buildDetailRow(
+                  Icons.calendar_today,
+                  '${DateFormat('dd/MM/yyyy').format(rental.startDate)} - ${DateFormat('dd/MM/yyyy').format(rental.endDate)}',
                 ),
-                
-                const SizedBox(height: 16),
-                
-                // Prix total
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Prix total',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      '${rental.totalPrice.toStringAsFixed(2)} €',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue,
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: 4),
+                _buildDetailRow(
+                  Icons.attach_money,
+                  'Total: ${rental.totalPrice.toStringAsFixed(2)} DH',
                 ),
+                if (rental.carRating != null) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      ...List.generate(
+                        5,
+                        (index) => Icon(
+                          index < rental.carRating! ? Icons.star : Icons.star_border,
+                          color: Colors.amber,
+                          size: 20,
+                        ),
+                      ),
+                      if (rental.reviewComment?.isNotEmpty ?? false) ...[
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '"${rental.reviewComment!}"',
+                            style: const TextStyle(
+                              fontStyle: FontStyle.italic,
+                              fontSize: 12,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            maxLines: 1,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ] else if (rental.status == 'completed') ...[
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => _showRatingDialog(rental),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        backgroundColor: Colors.blue.shade50,
+                        foregroundColor: Theme.of(context).primaryColor,
+                      ),
+                      child: const Text('Évaluer cette location'),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
-  Widget _buildInfoRow(IconData icon, String text) {
+// Ajoutez cette méthode utilitaire pour l'image de remplacement
+Widget _buildPlaceholderImage() {
+  return Container(
+    height: 120,
+    color: Colors.grey[200],
+    child: const Center(
+      child: Icon(Icons.car_rental, size: 50, color: Colors.grey),
+    ),
+  );
+}
+
+  Widget _buildDetailRow(IconData icon, String text) {
     return Row(
       children: [
-        Icon(icon, size: 20, color: Colors.grey[600]),
+        Icon(icon, size: 16, color: Colors.grey),
         const SizedBox(width: 8),
         Text(
           text,
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.grey[800],
-          ),
+          style: const TextStyle(fontSize: 14, color: Colors.grey),
         ),
       ],
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.history_toggle_off,
-            size: 80,
-            color: Colors.grey[400],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Aucune location trouvée',
-            style: TextStyle(
-              fontSize: 18,
-              color: Colors.grey[600],
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Vos locations apparaîtront ici',
-            style: TextStyle(
-              color: Colors.grey[500],
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -318,5 +375,128 @@ class RentalHistoryScreen extends StatelessWidget {
       default:
         return status;
     }
+  }
+}
+
+class _RatingDialog extends StatefulWidget {
+  final RentalHistory rental;
+  final Function(RentalHistory) onRatingSubmitted;
+
+  const _RatingDialog({
+    required this.rental,
+    required this.onRatingSubmitted,
+  });
+
+  @override
+  _RatingDialogState createState() => _RatingDialogState();
+}
+
+class _RatingDialogState extends State<_RatingDialog> {
+  late int _carRating;
+  late int _driverRating;
+  final _commentController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _carRating = widget.rental.carRating ?? 0;
+    _driverRating = widget.rental.driverRating ?? 0;
+    _commentController.text = widget.rental.reviewComment ?? '';
+  }
+
+  @override
+  void dispose() {
+    _commentController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Évaluer votre location'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Notez le véhicule:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(5, (index) {
+                return IconButton(
+                  icon: Icon(
+                    index < _carRating ? Icons.star : Icons.star_border,
+                    color: Colors.amber,
+                    size: 30,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _carRating = index + 1;
+                    });
+                  },
+                );
+              }),
+            ),
+            if (widget.rental.withDriver) ...[
+              const SizedBox(height: 16),
+              const Text(
+                'Notez le chauffeur:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (index) {
+                  return IconButton(
+                    icon: Icon(
+                      index < _driverRating ? Icons.star : Icons.star_border,
+                      color: Colors.amber,
+                      size: 30,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _driverRating = index + 1;
+                      });
+                    },
+                  );
+                }),
+              ),
+            ],
+            const SizedBox(height: 16),
+            TextField(
+              controller: _commentController,
+              decoration: const InputDecoration(
+                labelText: 'Commentaire (optionnel)',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Annuler'),
+        ),
+        ElevatedButton(
+          onPressed: _carRating > 0
+              ? () {
+                  final updatedRental = widget.rental
+                    ..carRating = _carRating
+                    ..driverRating = widget.rental.withDriver ? _driverRating : null
+                    ..reviewComment = _commentController.text;
+                  widget.onRatingSubmitted(updatedRental);
+                  Navigator.pop(context);
+                }
+              : null,
+          child: const Text('Soumettre'),
+        ),
+      ],
+    );
   }
 }

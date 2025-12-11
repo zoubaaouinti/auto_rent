@@ -191,7 +191,72 @@ class _VehicleFilterDrawerState extends State<VehicleFilterDrawer> {
               ],
             ),
           ),
-          
+          // Ajoutez cette section après le filtre de prix
+          const SizedBox(height: 16),
+          Card(
+            elevation: 2,
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Text(
+                        'Filtrer par distance',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Spacer(),
+                      Switch(
+                        value: _filters.filterByDistance,
+                        onChanged: (value) {
+                          setState(() {
+                            _filters = _filters.copyWith(
+                              filterByDistance: value,
+                            );
+                            widget.onFiltersChanged(_filters);
+                          });
+                        },
+                        activeColor: Theme.of(context).primaryColor,
+                      ),
+                    ],
+                  ),
+                  if (_filters.filterByDistance) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'Rayon: ${_filters.maxDistance.toStringAsFixed(1)} km',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    Slider(
+                      value: _filters.maxDistance,
+                      min: 1.0,
+                      max: 50.0,
+                      divisions: 49,
+                      label: '${_filters.maxDistance.toStringAsFixed(1)} km',
+                      onChanged: (value) {
+                        setState(() {
+                          _filters = _filters.copyWith(maxDistance: value);
+                        });
+                      },
+                      onChangeEnd: (_) {
+                        widget.onFiltersChanged(_filters);
+                      },
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
           // Boutons de réinitialisation
           Padding(
             padding: const EdgeInsets.all(16.0),
@@ -286,13 +351,16 @@ class FilterOptions {
   String? transmission;
   List<Carburant> selectedEnergies = [];
   RangeValues priceRange = const RangeValues(0, 1000);
+  bool filterByDistance = false;
+  double maxDistance = 10.0; // en kilomètres
 
   bool get hasActiveFilters => 
       selectedBrand != null || 
       selectedModel != null || 
       selectedTypes.isNotEmpty || 
       transmission != null || 
-      selectedEnergies.isNotEmpty;
+      selectedEnergies.isNotEmpty ||
+      filterByDistance;
 
   FilterOptions copyWith({
     String? selectedBrand,
@@ -301,6 +369,8 @@ class FilterOptions {
     String? transmission,
     List<Carburant>? selectedEnergies,
     RangeValues? priceRange,
+    bool? filterByDistance,
+    double? maxDistance,
   }) {
     return FilterOptions()
       ..selectedBrand = selectedBrand ?? this.selectedBrand
@@ -308,6 +378,8 @@ class FilterOptions {
       ..selectedTypes = selectedTypes ?? List.from(this.selectedTypes)
       ..transmission = transmission ?? this.transmission
       ..selectedEnergies = selectedEnergies ?? List.from(this.selectedEnergies)
-      ..priceRange = priceRange ?? this.priceRange;
+      ..priceRange = priceRange ?? this.priceRange
+      ..filterByDistance = filterByDistance ?? this.filterByDistance
+      ..maxDistance = maxDistance ?? this.maxDistance;
   }
 }

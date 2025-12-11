@@ -1,8 +1,12 @@
+import 'dart:math';
+
+import 'package:auto_rent/Screens/reservation_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:carousel_slider/carousel_slider.dart';
+import 'package:table_calendar/table_calendar.dart';
 import '../models/car_model.dart';
 import '../widgets/vehicle_filter_drawer.dart';
 
@@ -23,6 +27,16 @@ class _MapScreenState extends State<MapScreen> {
   late FilterOptions _filters;
   List<Vehicule> _allVehicles = [];
   List<Vehicule> _filteredVehicles = [];
+
+ // Liste des dates non disponibles (à remplacer par vos données réelles)
+  final List<DateTime> _nonAvailableDates = [
+    // Exemple de dates non disponibles
+    DateTime.now().add(const Duration(days: 2)),
+    DateTime.now().add(const Duration(days: 3)),
+    DateTime.now().add(const Duration(days: 7)),
+    DateTime.now().add(const Duration(days: 8)),
+    DateTime.now().add(const Duration(days: 9)),
+  ];
 
   @override
   void initState() {
@@ -90,48 +104,90 @@ class _MapScreenState extends State<MapScreen> {
     _applyFilters();
   }
 
-  void _applyFilters() {
-    if (!mounted) return;
-    
-    setState(() {
-      _filteredVehicles = _allVehicles.where((vehicle) {
-        if (_filters.selectedBrand != null && 
-            vehicle.marque != _filters.selectedBrand) {
+void _applyFilters() {
+  if (!mounted) return;
+  
+  setState(() {
+    _filteredVehicles = _allVehicles.where((vehicle) {
+      // Filtre par marque
+      if (_filters.selectedBrand != null && 
+          vehicle.marque != _filters.selectedBrand) {
+        return false;
+      }
+      
+      // Filtre par modèle
+      if (_filters.selectedModel != null && 
+          vehicle.modele != _filters.selectedModel) {
+        return false;
+      }
+      
+      // Filtre par type de carrosserie
+      if (_filters.selectedTypes.isNotEmpty && 
+          !_filters.selectedTypes.contains(vehicle.type)) {
+        return false;
+      }
+      
+      // Filtre par transmission
+      if (_filters.transmission != null && 
+          vehicle.transmission != _filters.transmission) {
+        return false;
+      }
+      
+      // Filtre par énergie
+      if (_filters.selectedEnergies.isNotEmpty && 
+          !_filters.selectedEnergies.contains(vehicle.carburant)) {
+        return false;
+      }
+      
+      // Filtre par prix
+      if (vehicle.prixJour < _filters.priceRange.start || 
+          vehicle.prixJour > _filters.priceRange.end) {
+        return false;
+      }
+      
+      // Filtre par distance
+      if (_filters.filterByDistance && _currentPosition != null) {
+        final vehiclePosition = LatLng(
+          33.5731 + (vehicle.id == '1' ? 0.01 : 0), 
+          -7.5898 + (vehicle.id == '1' ? 0.01 : 0)
+        );
+        
+        final distance = _calculateDistance(
+          _currentPosition!.latitude,
+          _currentPosition!.longitude,
+          vehiclePosition.latitude,
+          vehiclePosition.longitude,
+        );
+        
+        if (distance > _filters.maxDistance) {
           return false;
         }
-        
-        if (_filters.selectedModel != null && 
-            vehicle.modele != _filters.selectedModel) {
-          return false;
-        }
-        
-        if (_filters.selectedTypes.isNotEmpty && 
-            !_filters.selectedTypes.contains(vehicle.type)) {
-          return false;
-        }
-        
-        if (_filters.transmission != null && 
-            vehicle.transmission != _filters.transmission) {
-          return false;
-        }
-        
-        if (_filters.selectedEnergies.isNotEmpty && 
-            !_filters.selectedEnergies.contains(vehicle.carburant)) {
-          return false;
-        }
-        
-        if (vehicle.prixJour < _filters.priceRange.start || 
-            vehicle.prixJour > _filters.priceRange.end) {
-          return false;
-        }
-        
-        return true;
-      }).toList();
-      _updateMarkers();
-      _isLoading = false;
-    });
-  }
+      }
+      
+      return true;
+    }).toList();
 
+    _updateMarkers();
+    _isLoading = false;
+  });
+}
+// Ajoutez cette méthode utilitaire pour calculer la distance
+double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+  const int earthRadius = 6371; // Rayon de la Terre en km
+  double dLat = _degreesToRadians(lat2 - lat1);
+  double dLon = _degreesToRadians(lon2 - lon1);
+  
+  double a = sin(dLat / 2) * sin(dLat / 2) +
+      cos(_degreesToRadians(lat1)) * cos(_degreesToRadians(lat2)) *
+      sin(dLon / 2) * sin(dLon / 2);
+  
+  double c = 2 * atan2(sqrt(a), sqrt(1 - a));
+  return earthRadius * c;
+}
+
+double _degreesToRadians(degrees) {
+  return degrees * pi / 180;
+}
  void _updateMarkers() {
   _markers.clear();
   
@@ -411,6 +467,99 @@ class _MapScreenState extends State<MapScreen> {
                           ),
                         ).toList(),
                       ],
+                      // Calendrier de disponibilité
+                      const SizedBox(height: 16),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16.0),
+                        child: Text(
+                          'Disponibilité',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Card(
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        margin: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: TableCalendar(
+                            firstDay: DateTime.now(),
+                            lastDay: DateTime.now().add(const Duration(days: 90)),
+                            focusedDay: DateTime.now(),
+                            calendarFormat: CalendarFormat.month,
+                            availableCalendarFormats: const {CalendarFormat.month: 'Mois'},
+                            headerStyle: HeaderStyle(
+                              formatButtonVisible: false,
+                              titleCentered: true,
+                              titleTextStyle: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              leftChevronIcon: const Icon(Icons.chevron_left, size: 24),
+                              rightChevronIcon: const Icon(Icons.chevron_right, size: 24),
+                            ),
+                            calendarStyle: CalendarStyle(
+                              todayDecoration: BoxDecoration(
+                                color: Colors.blue.shade100,
+                                shape: BoxShape.circle,
+                              ),
+                              defaultTextStyle: const TextStyle(color: Colors.green),
+                              weekendTextStyle: const TextStyle(color: Colors.red),
+                              outsideDaysVisible: false,
+                            ),
+                            daysOfWeekStyle: const DaysOfWeekStyle(
+                              weekdayStyle: TextStyle(fontWeight: FontWeight.bold),
+                              weekendStyle: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.red,
+                              ),
+                            ),
+                            calendarBuilders: CalendarBuilders(
+                              defaultBuilder: (context, day, focusedDay) {
+                                bool isAvailable = !_nonAvailableDates.any((date) =>
+                                date.year == day.year &&
+                                    date.month == day.month &&
+                                    date.day == day.day
+                                ) && !day.isBefore(DateTime.now().subtract(const Duration(days: 1)));
+
+                                return Center(
+                                  child: Container(
+                                    width: 32,
+                                    height: 32,
+                                    decoration: BoxDecoration(
+                                      color: isAvailable ? Colors.green.shade50 : Colors.red.shade50,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: isAvailable ? Colors.green : Colors.red,
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        day.day.toString(),
+                                        style: TextStyle(
+                                          color: isAvailable ? Colors.green : Colors.red,
+                                          fontWeight: isSameDay(day, DateTime.now())
+                                              ? FontWeight.bold
+                                              : FontWeight.normal,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+
+
                       
                       const SizedBox(height: 20),
                       SizedBox(
@@ -418,7 +567,12 @@ class _MapScreenState extends State<MapScreen> {
                         child: ElevatedButton(
                           onPressed: () {
                             Navigator.pop(context);
-                            // Navigation vers l'écran de réservation
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ReservationScreen(vehicule: vehicule),
+                              ),
+                            );
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Theme.of(context).primaryColor,

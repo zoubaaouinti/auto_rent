@@ -1,3 +1,4 @@
+import 'package:auto_rent/presentation/themes/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'Screens/SplashScreen.dart';
 import 'Screens/LoginScreen.dart';
@@ -21,10 +22,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Auto Rent',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF5689FF)),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.lightTheme,
       initialRoute: '/',
       routes: {
         '/': (context) => const SplashScreen(),
