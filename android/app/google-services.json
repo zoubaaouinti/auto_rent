@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "167198755812",
+    "project_id": "auto-rent-cdd02",
+    "storage_bucket": "auto-rent-cdd02.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:167198755812:android:413395fb4c13a41e89d5f1",
+        "android_client_info": {
+          "package_name": "com.example.auto_rent"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDhQVA2BuAvx4RxJqqFcAHK_f8StauCEOs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

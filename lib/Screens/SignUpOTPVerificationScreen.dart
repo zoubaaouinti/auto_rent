@@ -1,8 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:pinput/pinput.dart';
+import 'package:provider/provider.dart';
+import '../../services/auth_service.dart';
 
 class SignUpOTPVerificationScreen extends StatefulWidget {
-  const SignUpOTPVerificationScreen({super.key});
+  final String email;
+  final String password;
+
+  const SignUpOTPVerificationScreen({
+    Key? key,
+    required this.email,
+    required this.password,
+  }) : super(key: key);
 
   @override
   State<SignUpOTPVerificationScreen> createState() => _SignUpOTPVerificationScreenState();
@@ -10,20 +19,48 @@ class SignUpOTPVerificationScreen extends StatefulWidget {
 
 class _SignUpOTPVerificationScreenState extends State<SignUpOTPVerificationScreen> {
   final _formKey = GlobalKey<FormState>();
-  String _otp = '';
+  final _otpController = TextEditingController();
   String? _otpError;
+  bool _isLoading = false;
 
-  void validateOTP() {
-    setState(() {
-      if (_otp.length < 4) {
-        _otpError = 'Please enter a valid 4-digit OTP';
-      } else {
-        _otpError = null;
-        // Navigation vers une page de confirmation de création de compte
-        Navigator.pushReplacementNamed(context, '/home');
-      }
-    });
+  @override
+  void dispose() {
+    _otpController.dispose();
+    super.dispose();
   }
+
+  Future<void> _verifyAndCreateAccount() async {
+  if (!_formKey.currentState!.validate()) return;
+
+  setState(() {
+    _isLoading = true;
+    _otpError = null;
+  });
+
+  try {
+    final authService = context.read<AuthService>();
+    
+    // Vérifier l'OTP
+    final isOtpValid = await authService.verifyOTP(_otpController.text.trim());
+    
+    if (isOtpValid) {
+      // Créer le compte
+      await authService.completeSignUp();
+      
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/login');
+      }
+    } else {
+      setState(() => _otpError = 'Code OTP invalide');
+    }
+  } catch (e) {
+    setState(() => _otpError = 'Erreur: $e');
+  } finally {
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
+  }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +71,7 @@ class _SignUpOTPVerificationScreenState extends State<SignUpOTPVerificationScree
       resizeToAvoidBottomInset: false,
       body: SingleChildScrollView(
         child: Container(
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             image: DecorationImage(
               image: AssetImage("assets/images/bgSignUp.png"),
               fit: BoxFit.cover,
@@ -83,8 +120,8 @@ class _SignUpOTPVerificationScreenState extends State<SignUpOTPVerificationScree
                               ),
                             ),
                             SizedBox(height: screenHeight * 0.03),
-
-                            // OTP Input with validation
+                            
+                            // OTP Input
                             FormField<String>(
                               validator: (_) => _otpError,
                               builder: (field) {
@@ -92,6 +129,7 @@ class _SignUpOTPVerificationScreenState extends State<SignUpOTPVerificationScree
                                   children: [
                                     Pinput(
                                       length: 4,
+                                      controller: _otpController,
                                       defaultPinTheme: PinTheme(
                                         width: 60,
                                         height: 60,
@@ -105,11 +143,8 @@ class _SignUpOTPVerificationScreenState extends State<SignUpOTPVerificationScree
                                           border: Border.all(color: const Color(0xFF5689FF)),
                                         ),
                                       ),
-                                      onChanged: (value) {
-                                        setState(() {
-                                          _otp = value;
-                                          _otpError = null;
-                                        });
+                                      onChanged: (_) {
+                                        setState(() => _otpError = null);
                                       },
                                     ),
                                     if (_otpError != null) ...[
@@ -117,7 +152,8 @@ class _SignUpOTPVerificationScreenState extends State<SignUpOTPVerificationScree
                                       Row(
                                         mainAxisAlignment: MainAxisAlignment.center,
                                         children: [
-                                          const Icon(Icons.warning_amber_rounded, color: Color(0xFFFA5450), size: 18),
+                                          const Icon(Icons.warning_amber_rounded, 
+                                            color: Color(0xFFFA5450), size: 18),
                                           const SizedBox(width: 6),
                                           Text(
                                             _otpError!,
@@ -151,23 +187,32 @@ class _SignUpOTPVerificationScreenState extends State<SignUpOTPVerificationScree
                                   ),
                                   elevation: 5,
                                 ),
-                                onPressed: () => validateOTP(),
-                                child: const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      'Verify OTP',
-                                      style: TextStyle(
-                                        fontFamily: 'bgmedium',
-                                        color: Colors.white,
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
+                                onPressed: _isLoading ? null : _verifyAndCreateAccount,
+                                child: _isLoading
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            'Verify OTP',
+                                            style: TextStyle(
+                                              fontFamily: 'bgmedium',
+                                              color: Colors.white,
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          SizedBox(width: 8),
+                                          Icon(Icons.verified, color: Colors.white),
+                                        ],
                                       ),
-                                    ),
-                                    SizedBox(width: 8),
-                                    Icon(Icons.verified, color: Colors.white),
-                                  ],
-                                ),
                               ),
                             ),
 
@@ -176,17 +221,39 @@ class _SignUpOTPVerificationScreenState extends State<SignUpOTPVerificationScree
                             // Resend OTP
                             Center(
                               child: GestureDetector(
-                                onTap: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text("OTP Resent!")),
-                                  );
-                                },
-                                child: const Text(
-                                  "Didn't receive an OTP? Resend",
+                                onTap: _isLoading
+                                    ? null
+                                    : () async {
+                                        try {
+                                          await context
+                                              .read<AuthService>()
+                                              .sendOTP(widget.email);
+                                          if (mounted) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              const SnackBar(
+                                                content: Text('Nouveau code envoyé avec succès'),
+                                              ),
+                                            );
+                                          }
+                                        } catch (e) {
+                                          if (mounted) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(
+                                                content: Text('Erreur: $e'),
+                                                backgroundColor: Colors.red,
+                                              ),
+                                            );
+                                          }
+                                        }
+                                      },
+                                child: Text(
+                                  "Renvoyer le code",
                                   style: TextStyle(
                                     fontSize: 14,
                                     fontFamily: 'bgmedium',
-                                    color: Color(0xFF5689FF),
+                                    color: _isLoading 
+                                        ? Colors.grey 
+                                        : const Color(0xFF5689FF),
                                   ),
                                 ),
                               ),
@@ -197,15 +264,17 @@ class _SignUpOTPVerificationScreenState extends State<SignUpOTPVerificationScree
                             // Back to Sign Up
                             Center(
                               child: GestureDetector(
-                                onTap: () {
-                                  Navigator.pushReplacementNamed(context, '/signup');
-                                },
-                                child: const Text(
-                                  "Back to Sign Up",
+                                onTap: _isLoading
+                                    ? null
+                                    : () => Navigator.pop(context),
+                                child: Text(
+                                  "Retour à l'inscription",
                                   style: TextStyle(
                                     fontSize: 14,
                                     fontFamily: 'bgmedium',
-                                    color: Color(0xFF5689FF),
+                                    color: _isLoading 
+                                        ? Colors.grey 
+                                        : const Color(0xFF5689FF),
                                   ),
                                 ),
                               ),

@@ -5,6 +5,7 @@ import 'Tab_item.dart';
 import 'RentalHistoryScreen.dart';
 import 'HomeScreen.dart';
 import 'MapScreen.dart';
+import 'assistance_screen.dart';
 
 class MainAppScreen extends StatefulWidget {
   const MainAppScreen({super.key});
@@ -31,7 +32,7 @@ class _MainAppScreenState extends State<MainAppScreen> {
     const HomeScreen(),
     RentalHistoryScreen(),
     const MapScreen(),
-    const Center(child: Text("🛟 Assistance", style: TextStyle(fontSize: 20))),
+    AssistanceScreen(),
     const ProfileScreen(),
   ];
 
