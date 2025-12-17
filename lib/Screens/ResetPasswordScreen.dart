@@ -1,13 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/auth_provider.dart';
+import '../services/auth_service.dart';
 
-class ResetPasswordScreen extends StatefulWidget {
-  const ResetPasswordScreen({super.key});
+class ResetPasswordScreen extends ConsumerStatefulWidget {
+  final String email;
+  final String otp;
+  
+  const ResetPasswordScreen({
+    super.key,
+    required this.email,
+    required this.otp,
+  });
 
   @override
-  State<ResetPasswordScreen> createState() => _ResetPasswordScreenState();
+  ConsumerState<ResetPasswordScreen> createState() => _ResetPasswordScreenState();
 }
 
-class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
+class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
@@ -15,6 +25,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   String _confirmPassword = '';
   String? passwordError;
   String? confirmPasswordError;
+  bool _isLoading = false;
 
   void validateFields() {
     setState(() {
@@ -35,6 +46,45 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         confirmPasswordError = 'Passwords do not match';
       }
     });
+  }
+
+  Future<void> _resetPassword() async {
+    validateFields();
+    if (passwordError != null || confirmPasswordError != null) {
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      await ref.read(authServiceProvider).resetPassword(
+        email: widget.email,
+        otp: widget.otp,
+        newPassword: _password,
+      );
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Password reset successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pushReplacementNamed(context, '/login');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString().replaceAll('Exception: ', '')}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
 
@@ -170,29 +220,28 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                                   ),
                                   elevation: 5,
                                 ),
-                                onPressed: () {
-                                  validateFields();
-                                  if (passwordError == null && confirmPasswordError == null) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text("Password Reset Successfully!"),
-                                      ),
-                                    );
-                                    Navigator.pushReplacementNamed(context, '/login');
-                                  }
-                                },
-                                child: const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      'Reset Password',
-                                      style: TextStyle(
-                                        fontFamily: 'bgmedium',
-                                        color: Colors.white,
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
+                                onPressed: _isLoading ? null : _resetPassword,
+                                child: _isLoading
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            'Reset Password',
+                                            style: TextStyle(
+                                              fontFamily: 'bgmedium',
+                                              color: Colors.white,
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
                                     SizedBox(width: 8),
                                     Icon(Icons.refresh, color: Colors.white),
                                   ],

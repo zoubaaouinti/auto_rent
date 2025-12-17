@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 import '../services/auth_service.dart';
 import 'SignUpOTPVerificationScreen.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter/services.dart';
 
-class SignUpScreen extends StatefulWidget {
+class SignUpScreen extends ConsumerStatefulWidget  {
   const SignUpScreen({super.key});
 
   @override
-  State<SignUpScreen> createState() => _SignUpScreenState();
+  ConsumerState<SignUpScreen> createState() => _SignUpScreenState();
 }
-
-class _SignUpScreenState extends State<SignUpScreen> {
+class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
@@ -36,10 +38,59 @@ class _SignUpScreenState extends State<SignUpScreen> {
     super.dispose();
   }
 
+  Future<void> _signUp() async {
+    if (_formKey.currentState!.validate()) {
+      setState(() => _isLoading = true);
+      try {
+        if (_password != _confirmPassword) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Les mots de passe ne correspondent pas'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
+        }
+        final authService = ref.read(authServiceProvider);
+        await authService.register(
+          email: _email,
+          password: _password,
+        );
+        if (mounted) {
+          // Rediriger vers la page de vérification d'email
+          Navigator.pushReplacementNamed(
+            context,
+            '/otp-verification',
+            arguments: {
+              'email': _email,
+              'password': _password,
+            },
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(e.toString().replaceFirst('Exception: ', '')),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
+    final theme = Theme.of(context);
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
@@ -180,82 +231,66 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         ),
                         const SizedBox(height: 30),
 
-                        // Dans SignUpScreen.dart
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF5689FF),
-                            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(30),
+                        // Bouton d'inscription
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF5689FF),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                              elevation: 5,
                             ),
-                          ),
-                          onPressed: _isLoading ? null : () async {
-                            if (_formKey.currentState!.validate()) {
-                              setState(() => _isLoading = true);
-
-                              try {
-                                // Envoyer l'OTP
-                                await context.read<AuthService>().sendOTP(
-                                  _email,
-                                  password: _password,
-                                );
-
-                                // Naviguer vers l'écran de vérification OTP
-                                if (mounted) {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => SignUpOTPVerificationScreen(
-                                        email: _email,
-                                        password: _password,
-                                      ),
+                            onPressed: _isLoading ? null : _signUp,
+                            child: _isLoading
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
                                     ),
-                                  );
-                                }
-                              } catch (e) {
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Erreur: $e')),
-                                  );
-                                }
-                              } finally {
-                                if (mounted) {
-                                  setState(() => _isLoading = false);
-                                }
-                              }
-                            }
-                          },
-                          child: _isLoading
-                              ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                              : const Text(
-                            'S\'inscrire',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                            ),
+                                  )
+                                : const Text(
+                                    'S\'inscrire',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                           ),
                         ),
                         const SizedBox(height: 20),
 
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.pushReplacementNamed(context, '/login');
-                          },
-                          child: const Text(
-                            "Already have an account? Login",
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontFamily: 'bgmedium',
-                              color: Color(0xFF5689FF),
+                        // Lien vers la page de connexion
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text(
+                              'Vous avez déjà un compte ? ',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                              ),
                             ),
-                          ),
+                            GestureDetector(
+                              onTap: _isLoading
+                                  ? null
+                                  : () => Navigator.pushReplacementNamed(
+                                      context, '/login'),
+                              child: const Text(
+                                'Se connecter',
+                                style: TextStyle(
+                                  color: Color(0xFF5689FF),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),

@@ -3,19 +3,22 @@ import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/auth_provider.dart';
+import '../services/auth_service.dart';
 
 import 'LoginScreen.dart';
 
 
-class SplashScreen extends StatefulWidget {
+class SplashScreen extends ConsumerStatefulWidget {
 
   const SplashScreen({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen>
+class _SplashScreenState extends ConsumerState<SplashScreen>
     with SingleTickerProviderStateMixin {
   late VideoPlayerController _videoController;
   late AnimationController _glitchController;
@@ -45,10 +48,23 @@ class _SplashScreenState extends State<SplashScreen>
     // ✅ Delay before navigating to next screen
     Timer(const Duration(seconds: 10), () {
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/signup');
+      _navigateToNextScreen();
     });
   }
 
+  void _navigateToNextScreen() {
+    // Vérifier si l'utilisateur a coché "Remember me"
+    final authService = ref.read(authServiceProvider);
+    
+    if (authService.hasRememberedSession()) {
+      // L'utilisateur était connecté et avait coché "Remember me"
+      // Le token est déjà chargé, rediriger vers main
+      Navigator.pushReplacementNamed(context, '/main');
+    } else {
+      // Rediriger vers signup/login
+      Navigator.pushReplacementNamed(context, '/signup');
+    }
+  }
 
   void _startIntermittentGlitch() {
     _glitchTimer = Timer.periodic(const Duration(seconds: 5), (timer) {

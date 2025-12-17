@@ -1,27 +1,61 @@
 import 'package:flutter/material.dart';
 import 'package:pinput/pinput.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/auth_provider.dart';
+import '../services/auth_service.dart';
 
-class OTPVerificationScreen extends StatefulWidget {
-  const OTPVerificationScreen({super.key});
+class OTPVerificationScreen extends ConsumerStatefulWidget {
+  final String email;
+  
+  const OTPVerificationScreen({
+    super.key,
+    required this.email,
+  });
 
   @override
-  State<OTPVerificationScreen> createState() => _OTPVerificationScreenState();
+  ConsumerState<OTPVerificationScreen> createState() => _OTPVerificationScreenState();
 }
 
-class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
+class _OTPVerificationScreenState extends ConsumerState<OTPVerificationScreen> {
   final _formKey = GlobalKey<FormState>();
-  String _otp = '';
+  final _otpController = TextEditingController();
   String? _otpError;
+  bool _isLoading = false;
 
-  void validateOTP() {
-    setState(() {
-      if (_otp.length < 4) {
-        _otpError = 'Please enter a valid 4-digit OTP';
-      } else {
-        _otpError = null;
-        Navigator.pushReplacementNamed(context, '/resetpass');
+  @override
+  void dispose() {
+    _otpController.dispose();
+    super.dispose();
+  }
+
+  void validateOTP() async {
+    setState(() => _otpError = null);
+    
+    if (_otpController.text.length < 4) {
+      setState(() => _otpError = 'Please enter a valid 4-digit OTP');
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      // Rediriger vers le formulaire de réinitialisation avec l'OTP
+      if (mounted) {
+        Navigator.pushReplacementNamed(
+          context,
+          '/reset-password',
+          arguments: {
+            'email': widget.email,
+            'otp': _otpController.text.trim(),
+          },
+        );
       }
-    });
+    } catch (e) {
+      setState(() => _otpError = e.toString().replaceAll('Exception: ', ''));
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
 
@@ -92,6 +126,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                                   children: [
                                     Pinput(
                                       length: 4,
+                                      controller: _otpController,
                                       defaultPinTheme: PinTheme(
                                         width: 60,
                                         height: 60,
@@ -107,7 +142,6 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                                       ),
                                       onChanged: (value) {
                                         setState(() {
-                                          _otp = value;
                                           _otpError = null; // clear error on input
                                         });
                                       },
@@ -119,12 +153,15 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                                         children: [
                                           const Icon(Icons.warning_amber_rounded, color: Color(0xFFFA5450), size: 18),
                                           const SizedBox(width: 6),
-                                          Text(
-                                            _otpError!,
-                                            style: const TextStyle(
-                                              color: Color(0xFFFA5450),
-                                              fontSize: 12,
-                                              fontFamily: 'bgmedium',
+                                          Flexible(
+                                            child: Text(
+                                              _otpError!,
+                                              style: const TextStyle(
+                                                color: Color(0xFFFA5450),
+                                                fontSize: 12,
+                                                fontFamily: 'bgmedium',
+                                              ),
+                                              textAlign: TextAlign.center,
                                             ),
                                           ),
                                         ],
@@ -152,25 +189,32 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                                   ),
                                   elevation: 5,
                                 ),
-                                onPressed: () {
-                                  validateOTP();
-                                },
-                                child: const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      'Verify OTP',
-                                      style: TextStyle(
-                                        fontFamily: 'bgmedium',
-                                        color: Colors.white,
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
+                                onPressed: _isLoading ? null : validateOTP,
+                                child: _isLoading
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            'Verify OTP',
+                                            style: TextStyle(
+                                              fontFamily: 'bgmedium',
+                                              color: Colors.white,
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          SizedBox(width: 8),
+                                          Icon(Icons.verified, color: Colors.white),
+                                        ],
                                       ),
-                                    ),
-                                    SizedBox(width: 8),
-                                    Icon(Icons.verified, color: Colors.white),
-                                  ],
-                                ),
                               ),
                             ),
 
@@ -179,17 +223,34 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                             // Resend OTP
                             Center(
                               child: GestureDetector(
-                                onTap: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text("OTP Resent!")),
-                                  );
+                                onTap: _isLoading ? null : () async {
+                                  try {
+                                    await ref.read(authServiceProvider).forgotPassword(widget.email);
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Nouveau code envoyé avec succès'),
+                                          backgroundColor: Colors.green,
+                                        ),
+                                      );
+                                    }
+                                  } catch (e) {
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('Erreur: $e'),
+                                          backgroundColor: Colors.red,
+                                        ),
+                                      );
+                                    }
+                                  }
                                 },
-                                child: const Text(
+                                child: Text(
                                   "Didn't receive an OTP? Resend",
                                   style: TextStyle(
                                     fontSize: 14,
                                     fontFamily: 'bgmedium',
-                                    color: Color(0xFF5689FF),
+                                    color: _isLoading ? Colors.grey : const Color(0xFF5689FF),
                                   ),
                                 ),
                               ),

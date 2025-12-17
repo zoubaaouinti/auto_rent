@@ -1,23 +1,37 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/auth_provider.dart';
 import 'EditProfileScreen.dart';
 
-class ProfileScreen extends StatefulWidget {
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final String userName = 'David Robinson';
   final String userEmail = 'email@example.com';
 
   bool notificationsEnabled = true;
   bool darkModeEnabled = false;
 
-  void _logout(BuildContext context) {
-    Navigator.pushReplacementNamed(context, '/login');
+  void _logout(BuildContext context) async {
+    try {
+      await ref.read(authServiceProvider).logout();
+      ref.read(authStateProvider.notifier).state = const AsyncValue.data(null);
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/login');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur lors de la déconnexion: $e')),
+        );
+      }
+    }
   }
 
 

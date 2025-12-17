@@ -1,23 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pinput/pinput.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
+import 'package:flutter/services.dart';
 
-class SignUpOTPVerificationScreen extends StatefulWidget {
+import '../providers/auth_provider.dart';
+
+class SignUpOTPVerificationScreen extends ConsumerStatefulWidget {
   final String email;
   final String password;
-
   const SignUpOTPVerificationScreen({
-    Key? key,
+    super.key,
     required this.email,
     required this.password,
-  }) : super(key: key);
-
+  });
   @override
-  State<SignUpOTPVerificationScreen> createState() => _SignUpOTPVerificationScreenState();
+  ConsumerState<SignUpOTPVerificationScreen> createState() => _SignUpOTPVerificationScreenState();
 }
 
-class _SignUpOTPVerificationScreenState extends State<SignUpOTPVerificationScreen> {
+class _SignUpOTPVerificationScreenState extends ConsumerState<SignUpOTPVerificationScreen> {
   final _formKey = GlobalKey<FormState>();
   final _otpController = TextEditingController();
   String? _otpError;
@@ -38,29 +40,57 @@ class _SignUpOTPVerificationScreenState extends State<SignUpOTPVerificationScree
   });
 
   try {
-    final authService = context.read<AuthService>();
-    
-    // Vérifier l'OTP
-    final isOtpValid = await authService.verifyOTP(_otpController.text.trim());
-    
-    if (isOtpValid) {
-      // Créer le compte
-      await authService.completeSignUp();
+    // 1. Vérifier l'email avec l'OTP
+    await ref.read(authServiceProvider).verifyEmail(
+      email: widget.email,
+      otp: _otpController.text.trim(),
+    );
+
+    // 2. Se connecter automatiquement après vérification réussie
+    final user = await ref.read(authServiceProvider).login(
+      email: widget.email,
+      password: widget.password,
+    );
+
+    if (mounted) {
+      // 3. Mettre à jour l'état d'authentification
+      ref.read(authStateProvider.notifier).state = AsyncValue.data(user);
       
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, '/login');
-      }
-    } else {
-      setState(() => _otpError = 'Code OTP invalide');
+      // 4. Rediriger vers l'écran d'accueil
+      Navigator.pushReplacementNamed(context, '/main');
     }
   } catch (e) {
-    setState(() => _otpError = 'Erreur: $e');
+    final errorMessage = e.toString().replaceAll('Exception: ', '');
+    setState(() => _otpError = errorMessage);
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   } finally {
     if (mounted) {
       setState(() => _isLoading = false);
     }
   }
 }
+
+  // Méthode pour coller le code OTP depuis le presse-papiers
+  Future<void> _pasteOTP() async {
+    final clipboardData = await Clipboard.getData('text/plain');
+    if (clipboardData != null && clipboardData.text != null) {
+      // Nettoyer le texte collé pour ne garder que les chiffres
+      final otp = clipboardData.text!.replaceAll(RegExp(r'[^0-9]'), '');
+      if (otp.isNotEmpty) {
+        setState(() {
+          _otpController.text = otp;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -152,15 +182,18 @@ class _SignUpOTPVerificationScreenState extends State<SignUpOTPVerificationScree
                                       Row(
                                         mainAxisAlignment: MainAxisAlignment.center,
                                         children: [
-                                          const Icon(Icons.warning_amber_rounded, 
-                                            color: Color(0xFFFA5450), size: 18),
+                                          const Icon(Icons.warning_amber_rounded,
+                                              color: Color(0xFFFA5450), size: 18),
                                           const SizedBox(width: 6),
-                                          Text(
-                                            _otpError!,
-                                            style: const TextStyle(
-                                              color: Color(0xFFFA5450),
-                                              fontSize: 12,
-                                              fontFamily: 'bgmedium',
+                                          Flexible(
+                                            child: Text(
+                                              _otpError!,
+                                              textAlign: TextAlign.center,
+                                              style: const TextStyle(
+                                                color: Color(0xFFFA5450),
+                                                fontSize: 12,
+                                                fontFamily: 'bgmedium',
+                                              ),
                                             ),
                                           ),
                                         ],
@@ -224,35 +257,33 @@ class _SignUpOTPVerificationScreenState extends State<SignUpOTPVerificationScree
                                 onTap: _isLoading
                                     ? null
                                     : () async {
-                                        try {
-                                          await context
-                                              .read<AuthService>()
-                                              .sendOTP(widget.email);
-                                          if (mounted) {
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              const SnackBar(
-                                                content: Text('Nouveau code envoyé avec succès'),
-                                              ),
-                                            );
-                                          }
-                                        } catch (e) {
-                                          if (mounted) {
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              SnackBar(
-                                                content: Text('Erreur: $e'),
-                                                backgroundColor: Colors.red,
-                                              ),
-                                            );
-                                          }
-                                        }
-                                      },
+                                  try {
+                                    await ref.read(authServiceProvider).forgotPassword(widget.email);
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Nouveau code envoyé avec succès'),
+                                        ),
+                                      );
+                                    }
+                                  } catch (e) {
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('Erreur: $e'),
+                                          backgroundColor: Colors.red,
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
                                 child: Text(
                                   "Renvoyer le code",
                                   style: TextStyle(
                                     fontSize: 14,
                                     fontFamily: 'bgmedium',
-                                    color: _isLoading 
-                                        ? Colors.grey 
+                                    color: _isLoading
+                                        ? Colors.grey
                                         : const Color(0xFF5689FF),
                                   ),
                                 ),

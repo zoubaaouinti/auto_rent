@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/auth_provider.dart';
+import '../services/auth_service.dart';
 
-class ForgotPasswordScreen extends StatefulWidget {
+class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
 
   @override
-  State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
+  ConsumerState<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
 }
 
-class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
+class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
   String? emailError;
   String _email = '';
+  bool _isLoading = false;
 
   void validateEmail() {
     setState(() {
@@ -161,28 +165,68 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                   ),
                                   elevation: 5,
                                 ),
-                                onPressed: () {
+                                onPressed: _isLoading ? null : () async {
                                   validateEmail();
                                   if (emailError == null) {
-                                    Navigator.pushReplacementNamed(context, '/forgotpassotp');
+                                    setState(() => _isLoading = true);
+                                    try {
+                                      // Appeler forgotPassword pour envoyer l'OTP
+                                      await ref.read(authServiceProvider).forgotPassword(_email);
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                            content: Text('Code OTP envoyé par email'),
+                                            backgroundColor: Colors.green,
+                                          ),
+                                        );
+                                        // Rediriger vers la page de vérification OTP
+                                        Navigator.pushReplacementNamed(
+                                          context,
+                                          '/forgot-password-otp',
+                                          arguments: _email,
+                                        );
+                                      }
+                                    } catch (e) {
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text('Erreur: ${e.toString().replaceAll('Exception: ', '')}'),
+                                            backgroundColor: Colors.red,
+                                          ),
+                                        );
+                                      }
+                                    } finally {
+                                      if (mounted) {
+                                        setState(() => _isLoading = false);
+                                      }
+                                    }
                                   }
                                 },
-                                child: const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      'Reset Password',
-                                      style: TextStyle(
-                                        fontFamily: 'bgmedium',
-                                        color: Colors.white,
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
+                                child: _isLoading
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            'Reset Password',
+                                            style: TextStyle(
+                                              fontFamily: 'bgmedium',
+                                              color: Colors.white,
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          SizedBox(width: 8),
+                                          Icon(Icons.refresh, color: Colors.white),
+                                        ],
                                       ),
-                                    ),
-                                    SizedBox(width: 8),
-                                    Icon(Icons.refresh, color: Colors.white),
-                                  ],
-                                ),
                               ),
                             ),
 
