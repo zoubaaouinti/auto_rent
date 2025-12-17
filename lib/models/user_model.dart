@@ -9,6 +9,7 @@ class UserModel {
   final String? role;
   final String? address;
   final String? bio;
+  final String? dateOfBirth;
   final String? password;
   final String? otp;
   final String? otpExpiration;
@@ -25,6 +26,7 @@ class UserModel {
     this.role,
     this.address,
     this.bio,
+    this.dateOfBirth,
     this.password,
     this.otp,
     this.otpExpiration,
@@ -43,6 +45,7 @@ class UserModel {
       role: json['role'],
       address: json['address'],
       bio: json['bio'],
+      dateOfBirth: json['dateOfBirth'],
       password: json['password'],
       otp: json['otp'],
       otpExpiration: json['otpExpiration'],
@@ -62,6 +65,7 @@ class UserModel {
       if (role != null) 'role': role,
       if (address != null) 'address': address,
       if (bio != null) 'bio': bio,
+      if (dateOfBirth != null) 'dateOfBirth': dateOfBirth,
       if (password != null) 'password': password,
       if (otp != null) 'otp': otp,
       if (otpExpiration != null) 'otpExpiration': otpExpiration,
@@ -80,6 +84,7 @@ class UserModel {
     String? role,
     String? address,
     String? bio,
+    String? dateOfBirth,
     String? password,
     String? otp,
     String? otpExpiration,
@@ -96,6 +101,7 @@ class UserModel {
       role: role ?? this.role,
       address: address ?? this.address,
       bio: bio ?? this.bio,
+      dateOfBirth: dateOfBirth ?? this.dateOfBirth,
       password: password ?? this.password,
       otp: otp ?? this.otp,
       otpExpiration: otpExpiration ?? this.otpExpiration,

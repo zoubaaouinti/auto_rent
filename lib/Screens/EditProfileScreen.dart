@@ -1,16 +1,18 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import '../providers/auth_provider.dart';
 
-class EditProfileScreen extends StatefulWidget {
+class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
 
   @override
-  State<EditProfileScreen> createState() => _EditProfileScreenState();
+  ConsumerState<EditProfileScreen> createState() => _EditProfileScreenState();
 }
 
-class _EditProfileScreenState extends State<EditProfileScreen> with SingleTickerProviderStateMixin {
+class _EditProfileScreenState extends ConsumerState<EditProfileScreen> with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   
@@ -40,8 +42,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> with SingleTicker
       ),
     );
     _animationController.forward();
-    
-    // Charger les données utilisateur existantes
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     _loadUserData();
   }
 
@@ -58,17 +63,30 @@ class _EditProfileScreenState extends State<EditProfileScreen> with SingleTicker
   }
 
   Future<void> _loadUserData() async {
-    // Simuler un chargement
-    await Future.delayed(const Duration(milliseconds: 300));
+    // Charger les données de l'utilisateur depuis authState
+    final authState = ref.watch(authStateProvider);
     
-    // Ici, vous devriez charger les données de l'utilisateur depuis votre source de données
-    setState(() {
-      _nameController.text = 'David Robinson';
-      _emailController.text = 'david@example.com';
-      _phoneController.text = '+212 6 12 34 56 78';
-      _addressController.text = '123 Rue Example, Ville, Maroc';
-      _bioController.text = 'Passionné par les voitures et la technologie.';
-      _isLoading = false;
+    authState.whenData((user) {
+      if (mounted && user != null) {
+        setState(() {
+          _nameController.text = user.displayName ?? '';
+          _emailController.text = user.email ?? '';
+          _phoneController.text = user.phoneNumber ?? '';
+          _addressController.text = user.address ?? '';
+          _bioController.text = user.bio ?? '';
+          
+          if (user.dateOfBirth != null) {
+            try {
+              final date = DateTime.parse(user.dateOfBirth!);
+              _selectedDate = date;
+              _dobController.text = DateFormat('dd/MM/yyyy').format(date);
+            } catch (e) {
+              _dobController.text = user.dateOfBirth ?? '';
+            }
+          }
+          _isLoading = false;
+        });
+      }
     });
   }
 
@@ -112,25 +130,86 @@ class _EditProfileScreenState extends State<EditProfileScreen> with SingleTicker
     }
   }
 
-  void _submitForm() {
+  void _submitForm() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
         _isLoading = true;
       });
       
-      // Simuler une sauvegarde
-      Future.delayed(const Duration(seconds: 2), () {
-        setState(() {
-          _isLoading = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Profil mis à jour avec succès'),
-            backgroundColor: Colors.green,
-          ),
+      try {
+        // Format date for API (yyyy-MM-dd)
+        String dateOfBirth = '';
+        if (_selectedDate != null) {
+          dateOfBirth = DateFormat('yyyy-MM-dd').format(_selectedDate!);
+        } else if (_dobController.text.isNotEmpty) {
+          // Parse existing date format (dd/MM/yyyy)
+          try {
+            final parsed = DateFormat('dd/MM/yyyy').parse(_dobController.text);
+            dateOfBirth = DateFormat('yyyy-MM-dd').format(parsed);
+          } catch (e) {
+            dateOfBirth = _dobController.text;
+          }
+        }
+
+        // Mettre à jour le profil
+        await ref.read(authServiceProvider).updateProfile(
+          displayName: _nameController.text,
+          phoneNumber: _phoneController.text,
+          address: _addressController.text,
+          bio: _bioController.text,
+          dateOfBirth: dateOfBirth,
+          email: _emailController.text,
         );
-        Navigator.pop(context);
-      });
+
+        // Uploader la photo si sélectionnée
+        if (_profileImage != null) {
+          try {
+            await ref.read(authServiceProvider).uploadProfilePicture(_profileImage!);
+          } catch (e) {
+            // Si upload échoue, afficher avertissement mais continuer
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Profil mis à jour, mais l\'upload photo a échoué: $e'),
+                  backgroundColor: Colors.orange,
+                ),
+              );
+            }
+            if (mounted) {
+              setState(() {
+                _isLoading = false;
+              });
+              Navigator.pop(context);
+            }
+            return;
+          }
+        }
+
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Profil mis à jour avec succès'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.pop(context);
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Erreur: ${e.toString()}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
     }
   }
 

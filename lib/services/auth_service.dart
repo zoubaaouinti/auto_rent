@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dio/dio.dart';
+import 'package:http_parser/http_parser.dart';
 import '../core/constants/app_constants.dart';
 import '../models/user_model.dart';
 
@@ -368,6 +370,148 @@ Future<void> verifyEmail({
     }
     
     return 'Une erreur est survenue. Veuillez réessayer.';
+  }
+
+  // Changer le mot de passe
+  Future<void> changePassword({
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    try {
+      final response = await _dio.post(
+        '/api/v1/auth/change-password',
+        data: {
+          'oldPassword': oldPassword,
+          'newPassword': newPassword,
+        },
+      );
+
+      print('DEBUG: changePassword - statusCode: ${response.statusCode}');
+      
+      if (response.statusCode != null && response.statusCode! >= 300) {
+        final errorMessage = _extractErrorMessage(response.data);
+        throw ApiException(
+          errorMessage.isNotEmpty 
+              ? errorMessage 
+              : 'Erreur lors du changement de mot de passe',
+          statusCode: response.statusCode,
+        );
+      }
+    } on DioException catch (e) {
+      print('DEBUG: DioException in changePassword - ${e.type}');
+      throw ApiException(_handleDioError(e));
+    } catch (e) {
+      print('DEBUG: Exception in changePassword - $e');
+      throw ApiException('Erreur lors du changement de mot de passe: $e');
+    }
+  }
+
+  // Mettre à jour le profil
+  Future<Map<String, dynamic>> updateProfile({
+    required String displayName,
+    required String phoneNumber,
+    required String address,
+    required String bio,
+    required String dateOfBirth,
+    required String email,
+  }) async {
+    try {
+      final response = await _dio.put(
+        '/api/v1/auth/profile',
+        data: {
+          'displayName': displayName,
+          'phoneNumber': phoneNumber,
+          'address': address,
+          'bio': bio,
+          'dateOfBirth': dateOfBirth,
+          'email': email,
+        },
+      );
+
+      print('DEBUG: updateProfile - statusCode: ${response.statusCode}');
+      print('DEBUG: updateProfile - response: ${response.data}');
+      
+      if (response.statusCode != null && response.statusCode! >= 300) {
+        final errorMessage = _extractErrorMessage(response.data);
+        throw ApiException(
+          errorMessage.isNotEmpty 
+              ? errorMessage 
+              : 'Erreur lors de la mise à jour du profil',
+          statusCode: response.statusCode,
+        );
+      }
+
+      // Retourner les données mises à jour
+      return response.data ?? {};
+    } on DioException catch (e) {
+      print('DEBUG: DioException in updateProfile - ${e.type}');
+      throw ApiException(_handleDioError(e));
+    } catch (e) {
+      print('DEBUG: Exception in updateProfile - $e');
+      throw ApiException('Erreur lors de la mise à jour du profil: $e');
+    }
+  }
+
+  // Upload de la photo de profil
+  Future<Map<String, dynamic>> uploadProfilePicture(File imageFile) async {
+    try {
+      final fileName = imageFile.path.split(Platform.pathSeparator).last;
+      // detect mime type from file extension
+      String ext = fileName.contains('.') ? fileName.split('.').last.toLowerCase() : '';
+      String mimeType = 'application/octet-stream';
+      if (ext == 'jpg' || ext == 'jpeg') mimeType = 'image/jpeg';
+      else if (ext == 'png') mimeType = 'image/png';
+      else if (ext == 'gif') mimeType = 'image/gif';
+
+      final multipart = await MultipartFile.fromFile(
+        imageFile.path,
+        filename: fileName,
+        contentType: MediaType(mimeType.split('/')[0], mimeType.split('/')[1]),
+      );
+
+      // Send multiple possible keys to accommodate backend expectations
+      final formData = FormData.fromMap({
+        'profilePicture': multipart,
+        'file': multipart,
+        'image': multipart,
+        'photo': multipart,
+      });
+
+      // Try PUT first, if server rejects with 4xx/5xx, try POST as fallback
+      Response? response;
+      try {
+        response = await _dio.put('/api/v1/auth/profile-picture', data: formData);
+      } on DioException catch (e) {
+        // If server returns a response (e.response) we may try POST fallback for 4xx errors
+        if (e.response != null && (e.response!.statusCode == 400 || (e.response!.statusCode != null && e.response!.statusCode! >= 400))) {
+          // try POST fallback
+          response = await _dio.post('/api/v1/auth/profile-picture', data: formData);
+        } else {
+          rethrow;
+        }
+      }
+
+      print('DEBUG: uploadProfilePicture - statusCode: ${response.statusCode}');
+      print('DEBUG: uploadProfilePicture - response: ${response.data}');
+
+      if (response.statusCode != null && response.statusCode! >= 300) {
+        final errorMessage = _extractErrorMessage(response.data);
+        throw ApiException(
+          errorMessage.isNotEmpty 
+              ? errorMessage 
+              : 'Erreur lors de l\'upload de la photo',
+          statusCode: response.statusCode,
+        );
+      }
+
+      return response.data ?? {};
+    } on DioException catch (e) {
+      print('DEBUG: DioException in uploadProfilePicture - ${e.type}');
+      throw ApiException(_handleDioError(e));
+    } catch (e) {
+      print('DEBUG: Exception in uploadProfilePicture - $e');
+      throw ApiException('Erreur lors de l\'upload de la photo: $e');
+    }
   }
 
   // Se déconnecter
