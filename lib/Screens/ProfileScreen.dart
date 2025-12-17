@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/auth_provider.dart';
 import 'EditProfileScreen.dart';
+import '../core/constants/app_constants.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -193,14 +194,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 Row(
                   children: [
                     CircleAvatar(
-                      radius: 55, 
-                      backgroundColor: Colors.blue.shade100, 
-                      backgroundImage: user?.photoURL != null 
-                        ? NetworkImage(user!.photoURL!) 
-                        : null,
-                      child: user?.photoURL == null 
-                        ? Icon(Icons.person, size: 50, color: Colors.blue)
-                        : null,
+                      radius: 55,
+                      backgroundColor: Colors.blue.shade100,
+                      backgroundImage: (user?.photoURL != null)
+                          ? NetworkImage(
+                              user!.photoURL!.startsWith('http')
+                                  ? user.photoURL!
+                                  : '${AppConstants.baseUrl}${user.photoURL!}',
+                            )
+                          : null,
+                      child: user?.photoURL == null ? Icon(Icons.person, size: 50, color: Colors.blue) : null,
                     ),
                     const SizedBox(width: 16),
                     Column(

@@ -175,6 +175,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> with Sing
                 ),
               );
             }
+            // Rafraîchir le profil malgré l'erreur d'upload
+            try {
+              await ref.read(authStateProvider.notifier).refreshProfile();
+            } catch (_) {}
             if (mounted) {
               setState(() {
                 _isLoading = false;
@@ -184,6 +188,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> with Sing
             return;
           }
         }
+
+        // Rafraîchir le profil local pour afficher les changements immédiats
+        await ref.read(authStateProvider.notifier).refreshProfile();
 
         if (mounted) {
           setState(() {

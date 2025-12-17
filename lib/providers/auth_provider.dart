@@ -51,16 +51,21 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
     try {
       final token = _authService.token;
       if (token != null) {
-        // Pour le moment, on crée un utilisateur avec juste le token
-        // Vous pouvez ajouter une méthode pour récupérer plus d'informations utilisateur
-        state = AsyncValue.data(
-          UserModel(
-            id: 'temp-id',
-            email: 'user@example.com',
-            token: token,
-            emailVerified: true,
-          )
-        );
+        // Récupérer le profil réel depuis l'API
+        try {
+          final user = await _authService.fetchProfile();
+          state = AsyncValue.data(user);
+        } catch (e) {
+          // Si l'appel échoue, garder un utilisateur minimal avec token
+          state = AsyncValue.data(
+            UserModel(
+              id: 'temp-id',
+              email: 'user@example.com',
+              token: token,
+              emailVerified: true,
+            ),
+          );
+        }
       } else {
         state = const AsyncValue.data(null);
       }
@@ -73,7 +78,9 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
   Future<void> login(String email, String password, {bool rememberMe = false}) async {
     try {
       state = const AsyncValue.loading();
-      final user = await _authService.login(email: email, password: password, rememberMe: rememberMe);
+      // Perform login (saves token) then fetch full profile
+      await _authService.login(email: email, password: password, rememberMe: rememberMe);
+      final user = await _authService.fetchProfile();
       state = AsyncValue.data(user);
     } catch (e, stackTrace) {
       state = AsyncValue.error(e, stackTrace);
@@ -87,10 +94,11 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
   }) async {
     try {
       state = const AsyncValue.loading();
-      final user = await _authService.register(
+      await _authService.register(
         email: email,
         password: password,
       );
+      final user = await _authService.fetchProfile();
       state = AsyncValue.data(user);
     } catch (e, stackTrace) {
       state = AsyncValue.error(e, stackTrace);
@@ -145,6 +153,18 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
       state = const AsyncValue.loading();
       await _authService.logout();
       state = const AsyncValue.data(null);
+    } catch (e, stackTrace) {
+      state = AsyncValue.error(e, stackTrace);
+      rethrow;
+    }
+  }
+
+  // Rafraîchir le profil depuis l'API et mettre à jour l'état
+  Future<void> refreshProfile() async {
+    try {
+      state = const AsyncValue.loading();
+      final user = await _authService.fetchProfile();
+      state = AsyncValue.data(user);
     } catch (e, stackTrace) {
       state = AsyncValue.error(e, stackTrace);
       rethrow;

@@ -223,6 +223,23 @@ Future<void> verifyEmail({
     }
   }
 
+  // Récupérer le profil de l'utilisateur connecté
+  Future<UserModel> fetchProfile() async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>('/api/v1/auth/profile');
+      if (response.statusCode == 200 && response.data != null) {
+        final user = UserModel.fromJson(response.data!);
+        return user;
+      }
+      final errorMessage = _extractErrorMessage(response.data);
+      throw ApiException(errorMessage.isNotEmpty ? errorMessage : 'Erreur lors de la récupération du profil', statusCode: response.statusCode);
+    } on DioException catch (e) {
+      throw ApiException(_handleDioError(e));
+    } catch (e) {
+      throw ApiException('Erreur lors de la récupération du profil: $e');
+    }
+  }
+
   // Demander une réinitialisation de mot de passe
   Future<void> forgotPassword(String email) async {
     try {
